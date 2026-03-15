@@ -17,6 +17,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=False,
 )
 
 client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
@@ -72,7 +73,7 @@ async def get_demand_score(keywords: list[str]) -> float:
                 return 3.0
             total_score = sum(p["data"]["score"] for p in posts)
             num_comments = sum(p["data"]["num_comments"] for p in posts)
-            raw = min((total_score / 500) + (num_comments / 100), 10)
+            raw = min((total_score / 5000) + (num_comments / 500), 10)
             return round(max(1.0, raw), 2)
         except Exception:
             return 4.0

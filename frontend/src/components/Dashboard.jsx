@@ -1,76 +1,93 @@
 "use client";
 
+function viabilityMeta(score) {
+  if (score >= 7) return { label: "Strong Signal", color: "#2DD4A0", bg: "rgba(45,212,160,0.1)", border: "rgba(45,212,160,0.25)" };
+  if (score >= 5) return { label: "Moderate Signal", color: "#C9A84C", bg: "rgba(201,168,76,0.1)", border: "rgba(201,168,76,0.25)" };
+  if (score >= 3) return { label: "Weak Signal", color: "#F5A623", bg: "rgba(245,166,35,0.1)", border: "rgba(245,166,35,0.25)" };
+  return { label: "Risky Territory", color: "#F56565", bg: "rgba(245,101,101,0.1)", border: "rgba(245,101,101,0.25)" };
+}
+
 function ScoreCard({ label, value, color, description }) {
   return (
-    <div className="bg-[#111120] border border-[#222240] rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[#888] text-sm">{label}</span>
-        <span className="text-white font-semibold text-lg">
-          {value.toFixed(1)}
-          <span className="text-[#444] text-sm font-normal">/10</span>
-        </span>
+    <div style={{
+      background: "#0E0E14", border: "1px solid #1E1E2E",
+      borderRadius: "16px", padding: "22px"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+        <div style={{ fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase", color: "#6B6880" }}>
+          {label}
+        </div>
+        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: color }} />
       </div>
-      <div className="h-1.5 bg-[#1e1e35] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${value * 10}%`, background: color }}
-        />
+      <div style={{ fontFamily: "'Instrument Serif',serif", fontSize: "36px", fontWeight: 400, lineHeight: 1, marginBottom: "12px" }}>
+        {value.toFixed(1)}
+        <span style={{ fontSize: "14px", color: "#6B6880", fontFamily: "'DM Sans',sans-serif" }}>/10</span>
       </div>
-      <p className="text-[#555] text-xs mt-2">{description}</p>
+      <div style={{ height: "3px", background: "#1E1E2E", borderRadius: "100px", overflow: "hidden", marginBottom: "10px" }}>
+        <div style={{
+          height: "100%", borderRadius: "100px", background: color,
+          width: `${value * 10}%`, transition: "width 1s cubic-bezier(0.4,0,0.2,1)"
+        }}/>
+      </div>
+      <div style={{ fontSize: "11px", color: "#6B6880", lineHeight: 1.6 }}>{description}</div>
     </div>
   );
 }
 
-function viabilityMeta(score) {
-  if (score >= 7) return { label: "Strong Signal", color: "#34d399" };
-  if (score >= 5) return { label: "Moderate Signal", color: "#fbbf24" };
-  if (score >= 3) return { label: "Weak Signal", color: "#f97316" };
-  return { label: "Risky Territory", color: "#f87171" };
-}
-
 export default function Dashboard({ data }) {
-  const { label, color } = viabilityMeta(data.viability_score);
-  const circ = 2 * Math.PI * 50;
+  const { label, color, bg, border } = viabilityMeta(data.viability_score);
+  const circ = 2 * Math.PI * 54;
   const dash = (data.viability_score / 10) * circ;
 
   return (
-    <div className="mt-10 space-y-4">
-      {/* Viability Hero */}
-      <div className="bg-[#111120] border border-[#222240] rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-8">
-        <svg width="120" height="120" viewBox="0 0 120 120" className="flex-shrink-0">
-          <circle cx="60" cy="60" r="50" fill="none" stroke="#1e1e35" strokeWidth="9" />
-          <circle
-            cx="60" cy="60" r="50" fill="none"
-            stroke={color} strokeWidth="9"
-            strokeDasharray={`${dash} ${circ}`}
-            strokeLinecap="round"
-            transform="rotate(-90 60 60)"
-            style={{ transition: "stroke-dasharray 1s ease" }}
+    <div style={{ animation: "fadeUp 0.5s ease both" }}>
+      {/* Hero */}
+      <div style={{
+        background: "#0E0E14", border: "1px solid #1E1E2E", borderRadius: "20px",
+        padding: "40px", display: "flex", alignItems: "center", gap: "40px",
+        marginBottom: "20px", flexWrap: "wrap"
+      }}>
+        <svg width="130" height="130" viewBox="0 0 130 130" style={{ flexShrink: 0 }}>
+          <circle cx="65" cy="65" r="54" fill="none" stroke="#1E1E2E" strokeWidth="8"/>
+          <circle cx="65" cy="65" r="54" fill="none" stroke={color} strokeWidth="8"
+            strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+            transform="rotate(-90 65 65)"
+            style={{ transition: "stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)" }}
           />
-          <text x="60" y="55" textAnchor="middle" fill="white" fontSize="26" fontWeight="700">
+          <text x="65" y="60" textAnchor="middle" fill="#F0EEE8" fontSize="30"
+            fontFamily="'Instrument Serif',serif" fontWeight="400">
             {data.viability_score.toFixed(1)}
           </text>
-          <text x="60" y="72" textAnchor="middle" fill="#555" fontSize="10">
-            / 10
+          <text x="65" y="78" textAnchor="middle" fill="#6B6880" fontSize="11"
+            fontFamily="'DM Sans',sans-serif">
+            out of 10
           </text>
         </svg>
-        <div className="flex-1 text-center sm:text-left">
-          <div
-            className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-3"
-            style={{ background: `${color}22`, color }}
-          >
+
+        <div style={{ flex: 1, minWidth: "200px" }}>
+          <div style={{
+            display: "inline-block", fontSize: "11px", letterSpacing: "0.1em",
+            textTransform: "uppercase", padding: "5px 14px", borderRadius: "100px",
+            marginBottom: "14px", fontWeight: 500, background: bg, color, border: `1px solid ${border}`
+          }}>
             {label}
           </div>
-          <h2 className="text-2xl font-bold mb-2">Startup Viability Score</h2>
-          <p className="text-[#555] text-sm mb-4">
-            40% demand · 30% trend · −30% competition
-          </p>
-          <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+          <div style={{
+            fontFamily: "'Instrument Serif',serif", fontSize: "28px",
+            fontWeight: 400, marginBottom: "8px", letterSpacing: "-0.01em"
+          }}>
+            Startup Viability Score
+          </div>
+          <div style={{ color: "#6B6880", fontSize: "13px", lineHeight: 1.7, marginBottom: "16px" }}>
+            Weighted signal: 40% demand · 30% trend · −30% competition
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             {data.keywords?.map((kw) => (
-              <span
-                key={kw}
-                className="bg-[#1a1a2e] border border-[#2a2a4a] text-[#7c7cff] text-xs px-2.5 py-1 rounded-full"
-              >
+              <span key={kw} style={{
+                background: "#14141C", border: "1px solid #1E1E2E",
+                color: "#6B6880", fontSize: "11px", padding: "4px 12px",
+                borderRadius: "100px", letterSpacing: "0.04em"
+              }}>
                 {kw}
               </span>
             ))}
@@ -78,41 +95,51 @@ export default function Dashboard({ data }) {
         </div>
       </div>
 
-      {/* Score Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <ScoreCard
-          label="Demand Score" value={data.demand_score} color="#7c7cff"
-          description="Reddit discussion volume & engagement"
-        />
-        <ScoreCard
-          label="Trend Score" value={data.trend_score} color="#34d399"
-          description="12-month Google Trends momentum"
-        />
-        <ScoreCard
-          label="Competition Score" value={data.competition_score} color="#f97316"
-          description="Market saturation — lower is better for you"
-        />
+      {/* Score grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: "16px", marginBottom: "20px" }}>
+        <ScoreCard label="Demand" value={data.demand_score} color="#7C6FCD" description="Reddit engagement & discussion volume" />
+        <ScoreCard label="Trend" value={data.trend_score} color="#2DD4A0" description="Google Trends 12-month momentum" />
+        <ScoreCard label="Competition" value={data.competition_score} color="#F5A623" description="Market saturation — lower favours you" />
       </div>
 
-      {/* AI Feedback */}
-      <div className="bg-[#111120] border border-[#222240] rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full bg-[#7c7cff]" />
-          <span className="text-white font-medium text-sm">AI Analyst Verdict</span>
+      {/* AI feedback */}
+      <div style={{
+        background: "#0E0E14", border: "1px solid #1E1E2E",
+        borderRadius: "16px", padding: "28px", marginBottom: "16px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "18px" }}>
+          <div style={{
+            width: "28px", height: "28px", borderRadius: "8px",
+            background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}>
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#C9A84C" }}/>
+          </div>
+          <div style={{ fontSize: "13px", fontWeight: 500, letterSpacing: "0.04em" }}>Analyst Verdict</div>
+          <div style={{
+            marginLeft: "auto", fontSize: "10px", color: "#C9A84C",
+            background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)",
+            padding: "3px 10px", borderRadius: "100px", letterSpacing: "0.06em", textTransform: "uppercase"
+          }}>
+            Llama 3.3
+          </div>
         </div>
-        <p className="text-[#aaa] text-sm leading-relaxed whitespace-pre-line">
+        <p style={{ fontSize: "14px", color: "#A09DB8", lineHeight: 1.85, whiteSpace: "pre-line", fontWeight: 300 }}>
           {data.ai_feedback}
         </p>
       </div>
 
-      {/* Roast Mode */}
+      {/* Roast */}
       {data.roast && (
-        <div className="bg-[#1a0f00] border border-orange-900/40 rounded-2xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-base">🔥</span>
-            <span className="text-orange-400 font-medium text-sm">Roast Mode</span>
+        <div style={{
+          background: "#0F0800", border: "1px solid rgba(245,166,35,0.2)",
+          borderRadius: "16px", padding: "28px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+            <span style={{ fontSize: "16px" }}>🔥</span>
+            <div style={{ fontSize: "13px", fontWeight: 500, color: "#F5A623" }}>Roast Mode</div>
           </div>
-          <p className="text-orange-200/70 text-sm leading-relaxed italic">
+          <p style={{ fontSize: "14px", color: "rgba(245,166,35,0.6)", lineHeight: 1.85, fontStyle: "italic", fontWeight: 300 }}>
             {data.roast}
           </p>
         </div>
