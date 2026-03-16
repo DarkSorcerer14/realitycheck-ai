@@ -34,6 +34,14 @@ class Analysis(Base):
     target_audience = Column(String(500))
     monetization = Column(String(500))
     competitors = Column(Text)
+    # Extended scoring model
+    market_size_score = Column(Float)
+    willingness_to_pay = Column(Float)
+    monetization_clarity = Column(Float)
+    defensibility = Column(Float)
+    regulatory_risk = Column(Float)
+    time_to_revenue = Column(Float)
+    founder_fit = Column(Float)
     analyzed_at = Column(DateTime, default=datetime.utcnow)
     idea = relationship("Idea", back_populates="analyses")
 

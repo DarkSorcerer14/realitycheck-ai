@@ -10,7 +10,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [refreshHistory, setRefreshHistory] = useState(0);
 
-  async function analyze(idea, roastMode) {
+  async function analyze(idea, roastMode, domainExp, techSkills, network) {
     setLoading(true);
     setError("");
     setResult(null);
@@ -18,7 +18,13 @@ export default function Home() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea, roast_mode: roastMode }),
+        body: JSON.stringify({
+          idea,
+          roast_mode: roastMode,
+          domain_experience: domainExp,
+          technical_skills: techSkills,
+          relevant_network: network,
+        }),
       });
       if (!res.ok) {
         let errMsg = "Intelligence Analysis Failed. Is the backend running?";

@@ -95,41 +95,75 @@ export default function Dashboard({ data }) {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Primary Scores Grid */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
-        <div style={{ flex: "1 1 280px" }}>
-          <ScoreCard label="Organic Demand" value={data.demand_score} color="#3b82f6" description="Cumulative Reddit discussion volume & engagement." delay="0.1s" />
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Organic Demand" value={data.demand_score} color="#3b82f6" description="Reddit discussion volume & engagement signals." delay="0.1s" />
         </div>
-        <div style={{ flex: "1 1 280px" }}>
-          <ScoreCard label="Trend Momentum" value={data.trend_score} color="var(--primary)" description="Google Trends 12-month search interest trajectory." delay="0.2s" pulse={true} />
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Trend Momentum" value={data.trend_score} color="var(--primary)" description="Google Trends 12-month search trajectory." delay="0.2s" pulse={true} />
         </div>
-        <div style={{ flex: "1 1 280px" }}>
-          <ScoreCard label="Market Saturation" value={data.competition_score} color="#ec4899" description="AI-estimated competition density (lower is better)." delay="0.3s" />
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Market Size (TAM)" value={data.market_size_score ?? 5} color="#06b6d4" description="Total addressable market potential globally." delay="0.3s" />
         </div>
       </div>
 
-      {/* Business Profile Features */}
-      {(data.target_audience || data.monetization) && (
+      {/* Extended Scores Grid */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Willingness to Pay" value={data.willingness_to_pay ?? 5} color="#f59e0b" description="Purchase intent beyond free-tier interest." delay="0.35s" />
+        </div>
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Monetization Clarity" value={data.monetization_clarity ?? 5} color="#10b981" description="How clear & proven the revenue model is." delay="0.4s" />
+        </div>
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Defensibility / Moat" value={data.defensibility ?? 5} color="#a78bfa" description="Network effects, switching cost, data moat." delay="0.45s" />
+        </div>
+      </div>
+
+      {/* Risk & Time Row */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Time to Revenue" value={data.time_to_revenue ?? 5} color="#34d399" description="How quickly first dollar can be earned." delay="0.5s" />
+        </div>
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Regulatory Risk" value={data.regulatory_risk ?? 3} color="#f87171" description="Compliance burden — lower is better." delay="0.55s" />
+        </div>
+        <div style={{ flex: "1 1 260px" }}>
+          <ScoreCard label="Market Saturation" value={data.competition_score} color="#ec4899" description="Competition density — lower is better." delay="0.6s" />
+        </div>
+      </div>
+
+      {/* Founder Fit + Business Profile */}
+      {(data.target_audience || data.monetization || (data.founder_fit !== undefined && data.founder_fit !== null)) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
-          {data.target_audience && (
-            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 280px", padding: "24px", animationDelay: "0.5s" }}>
-              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--success)", fontWeight: 600, marginBottom: "12px" }}>
-                Target Audience
+          {data.founder_fit !== undefined && data.founder_fit !== null && (
+            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 260px", padding: "24px", animationDelay: "0.65s" }}>
+              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--primary)", fontWeight: 600, marginBottom: "12px" }}>
+                Founder Fit
               </div>
-              <div style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
-                {data.target_audience}
+              <div className="font-outfit" style={{ fontSize: "3rem", fontWeight: 700, lineHeight: 1, marginBottom: "16px" }}>
+                {data.founder_fit.toFixed(1)}
+                <span style={{ fontSize: "1rem", color: "var(--text-dim)", fontWeight: 400, marginLeft: "4px" }}>/10</span>
+              </div>
+              <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "999px", overflow: "hidden", marginBottom: "12px" }}>
+                <div style={{ height: "100%", borderRadius: "999px", background: "var(--primary)", width: `${data.founder_fit * 10}%`, transition: "width 1.5s cubic-bezier(0.16,1,0.3,1)", boxShadow: "0 0 10px var(--primary)" }} />
+              </div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                {data.founder_fit === 0 ? "No background entered — fill in Founder Fit for a more accurate score." : "Based on your domain, technical, and network answers."}
               </div>
             </div>
           )}
-
+          {data.target_audience && (
+            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 260px", padding: "24px", animationDelay: "0.7s" }}>
+              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--success)", fontWeight: 600, marginBottom: "12px" }}>Target Audience</div>
+              <div style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.6 }}>{data.target_audience}</div>
+            </div>
+          )}
           {data.monetization && (
-            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 280px", padding: "24px", animationDelay: "0.6s" }}>
-              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--warning)", fontWeight: 600, marginBottom: "12px" }}>
-                Monetization Model
-              </div>
-              <div style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
-                {data.monetization}
-              </div>
+            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 260px", padding: "24px", animationDelay: "0.75s" }}>
+              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--warning)", fontWeight: 600, marginBottom: "12px" }}>Monetization Model</div>
+              <div style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.6 }}>{data.monetization}</div>
             </div>
           )}
         </div>

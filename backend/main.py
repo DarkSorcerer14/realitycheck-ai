@@ -39,6 +39,9 @@ async def startup():
 class IdeaRequest(BaseModel):
     idea: str
     roast_mode: bool = False
+    domain_experience: bool = False
+    technical_skills: bool = False
+    relevant_network: bool = False
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -160,6 +163,35 @@ async def get_business_profile(idea: str) -> dict:
         return {"elevator_pitch": "Idea is too ambiguous.", "target_audience": "Unknown", "monetization": "Unknown", "competitors": []}
 
 
+async def get_extended_scores(idea: str, keywords: list[str]) -> dict:
+    """Single LLM call for all 5 new scores to minimize latency."""
+    raw = await llm(
+        "You are a startup analyst. Score this idea on these 5 dimensions, each 0.0-10.0 (floats). "
+        "Return ONLY valid JSON with these exact keys: "
+        "market_size_score (0=niche <$1M TAM, 10=massive >$10B TAM), "
+        "willingness_to_pay (0=nobody pays, 10=strong purchase intent), "
+        "monetization_clarity (0=no clear model, 10=clear proven model), "
+        "defensibility (0=easily copied, 10=strong moat), "
+        "regulatory_risk (0=no barriers, 10=heavily regulated industry), "
+        "time_to_revenue (0=years away, 10=can charge day 1)",
+        f"Idea: {idea}\nKeywords: {', '.join(keywords)}",
+        json_mode=True,
+        temperature=0.2,
+    )
+    try:
+        d = json.loads(raw)
+        defaults = {"market_size_score": 5.0, "willingness_to_pay": 5.0, "monetization_clarity": 5.0, "defensibility": 5.0, "regulatory_risk": 3.0, "time_to_revenue": 5.0}
+        return {k: float(d.get(k, defaults[k])) for k in defaults}
+    except Exception:
+        return {"market_size_score": 5.0, "willingness_to_pay": 5.0, "monetization_clarity": 5.0, "defensibility": 5.0, "regulatory_risk": 3.0, "time_to_revenue": 5.0}
+
+
+def compute_founder_fit(domain: bool, technical: bool, network: bool) -> float:
+    """0-10 founder fit score from 3 yes/no questions."""
+    score = (domain * 4.0) + (technical * 3.5) + (network * 2.5)
+    return round(score, 1)
+
+
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @app.post("/analyze")
@@ -177,9 +209,28 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
     demand_score = await get_demand_score(keywords)
     trend_score = get_trend_score(keywords)
     competition_score = await get_competition_score(keywords, req.idea)
+    extended = await get_extended_scores(idea_text, keywords)
+    founder_fit = compute_founder_fit(req.domain_experience, req.technical_skills, req.relevant_network)
 
-    raw_v = (demand_score * 0.35) + (trend_score * 0.35) + ((10 - competition_score) * 0.30)
-    # Remap 0-10 raw to 4-10 range
+    market_size_score = extended["market_size_score"]
+    willingness_to_pay = extended["willingness_to_pay"]
+    monetization_clarity = extended["monetization_clarity"]
+    defensibility = extended["defensibility"]
+    regulatory_risk = extended["regulatory_risk"]
+    time_to_revenue = extended["time_to_revenue"]
+
+    # 9-factor weighted viability formula (CB Insights model)
+    raw_v = (
+        0.20 * demand_score +
+        0.15 * trend_score +
+        0.15 * market_size_score +
+        0.10 * willingness_to_pay +
+        0.10 * founder_fit +
+        0.10 * monetization_clarity +
+        0.10 * defensibility +
+        0.05 * (10 - regulatory_risk) +   # inverted
+        0.05 * (10 - competition_score)    # inverted
+    )
     viability_score = round(min(max(4.0 + (raw_v * 0.6), 4.0), 10.0), 2)
 
     ai_feedback = await get_ai_feedback(
@@ -206,7 +257,14 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
         elevator_pitch=business_profile.get("elevator_pitch", ""),
         target_audience=business_profile.get("target_audience", ""),
         monetization=business_profile.get("monetization", ""),
-        competitors=json.dumps(business_profile.get("competitors", []))
+        competitors=json.dumps(business_profile.get("competitors", [])),
+        market_size_score=market_size_score,
+        willingness_to_pay=willingness_to_pay,
+        monetization_clarity=monetization_clarity,
+        defensibility=defensibility,
+        regulatory_risk=regulatory_risk,
+        time_to_revenue=time_to_revenue,
+        founder_fit=founder_fit,
     )
     db.add(new_analysis)
     await db.commit()
@@ -227,6 +285,13 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
         "target_audience": new_analysis.target_audience,
         "monetization": new_analysis.monetization,
         "competitors": json.loads(new_analysis.competitors) if new_analysis.competitors else [],
+        "market_size_score": market_size_score,
+        "willingness_to_pay": willingness_to_pay,
+        "monetization_clarity": monetization_clarity,
+        "defensibility": defensibility,
+        "regulatory_risk": regulatory_risk,
+        "time_to_revenue": time_to_revenue,
+        "founder_fit": founder_fit,
         "analyzed_at": new_analysis.analyzed_at.isoformat(),
     }
 
@@ -259,6 +324,13 @@ async def get_history(db: AsyncSession = Depends(get_db)):
             "target_audience": a.target_audience,
             "monetization": a.monetization,
             "competitors": json.loads(a.competitors) if a.competitors else [],
+            "market_size_score": a.market_size_score,
+            "willingness_to_pay": a.willingness_to_pay,
+            "monetization_clarity": a.monetization_clarity,
+            "defensibility": a.defensibility,
+            "regulatory_risk": a.regulatory_risk,
+            "time_to_revenue": a.time_to_revenue,
+            "founder_fit": a.founder_fit,
             "analyzed_at": a.analyzed_at.isoformat()
         })
     return {"history": out}
