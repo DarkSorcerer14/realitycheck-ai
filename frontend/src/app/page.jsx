@@ -150,7 +150,7 @@ export default function Home() {
           </span>
         </div>
         <span className="font-inter" style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontWeight: 300 }}>
-          Made with <span style={{ color: "var(--danger)" }}></span> by <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>Code Bros</span>
+          Made by <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>Code Bros</span>
         </span>
       </footer>
     </>
