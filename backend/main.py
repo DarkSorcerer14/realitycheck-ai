@@ -179,8 +179,8 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
     competition_score = await get_competition_score(keywords, req.idea)
 
     raw_v = (demand_score * 0.35) + (trend_score * 0.35) + ((10 - competition_score) * 0.30)
-    # Remap 0-10 raw to 5-10 range so viable ideas always show above mid-point
-    viability_score = round(min(max(5.0 + (raw_v / 2.0), 5.0), 10.0), 2)
+    # Remap 0-10 raw to 4-10 range
+    viability_score = round(min(max(4.0 + (raw_v * 0.6), 4.0), 10.0), 2)
 
     ai_feedback = await get_ai_feedback(
         req.idea, demand_score, trend_score, competition_score, viability_score
