@@ -142,6 +142,22 @@ async def get_roast(idea: str, v: float) -> str:
     )
 
 
+async def get_business_profile(idea: str) -> dict:
+    raw = await llm(
+        "You are a master product strategist. Analyze this startup idea and provide the following in JSON format: "
+        "1. elevator_pitch (string, max 150 chars, catchy) "
+        "2. target_audience (string, specifically who it's for, max 100 chars) "
+        "3. monetization (string, e.g. 'B2B SaaS ($29/mo) + Usage Fees', max 100 chars) "
+        "4. competitors (list of strings, 1-3 direct or indirect competitors/alternatives) ",
+        f"Idea: {idea}",
+        json_mode=True
+    )
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"elevator_pitch": "Idea is too ambiguous.", "target_audience": "Unknown", "monetization": "Unknown", "competitors": []}
+
+
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @app.post("/analyze")
@@ -149,33 +165,6 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
     idea_text = req.idea.strip()
     if not idea_text:
         raise HTTPException(400, "Idea cannot be empty")
-
-    # Check if this exact idea has been analyzed before
-    stmt = (
-        select(Analysis, Idea)
-        .join(Idea, Analysis.idea_id == Idea.id)
-        .where(Idea.text == idea_text)
-        .order_by(Analysis.analyzed_at.desc())
-    )
-    result = await db.execute(stmt)
-    analyses_with_ideas = result.all()
-
-    for analysis_obj, idea_obj in analyses_with_ideas:
-        # If they want roast mode but it doesn't have one, we could re-run, but for simplicity we check if it satisfies
-        if not req.roast_mode or (req.roast_mode and analysis_obj.roast):
-            return {
-                "id": analysis_obj.id,
-                "idea_id": idea_obj.id,
-                "idea": idea_obj.text,
-                "keywords": json.loads(analysis_obj.keywords),
-                "demand_score": analysis_obj.demand_score,
-                "trend_score": analysis_obj.trend_score,
-                "competition_score": analysis_obj.competition_score,
-                "viability_score": analysis_obj.viability_score,
-                "ai_feedback": analysis_obj.ai_feedback,
-                "roast": analysis_obj.roast,
-                "analyzed_at": analysis_obj.analyzed_at.isoformat(),
-            }
 
     # Validate gibberish
     is_valid = await validate_idea(idea_text)
@@ -187,13 +176,15 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
     trend_score = get_trend_score(keywords)
     competition_score = await get_competition_score(keywords, req.idea)
 
-    raw_v = (demand_score * 0.4) + (trend_score * 0.4) + ((10 - competition_score) * 0.2)
-    viability_score = round(min(max(raw_v, 1.0), 10.0), 2)
+    raw_v = (demand_score * 0.35) + (trend_score * 0.35) + ((10 - competition_score) * 0.30)
+    # Remap 0-10 raw to 5-10 range so viable ideas always show above mid-point
+    viability_score = round(min(max(5.0 + (raw_v / 2.0), 5.0), 10.0), 2)
 
     ai_feedback = await get_ai_feedback(
         req.idea, demand_score, trend_score, competition_score, viability_score
     )
     roast = await get_roast(req.idea, viability_score) if req.roast_mode else None
+    business_profile = await get_business_profile(req.idea)
 
     # Save to DB
     new_idea = Idea(text=req.idea)
@@ -209,7 +200,11 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
         competition_score=competition_score,
         viability_score=viability_score,
         ai_feedback=ai_feedback,
-        roast=roast
+        roast=roast,
+        elevator_pitch=business_profile.get("elevator_pitch", ""),
+        target_audience=business_profile.get("target_audience", ""),
+        monetization=business_profile.get("monetization", ""),
+        competitors=json.dumps(business_profile.get("competitors", []))
     )
     db.add(new_analysis)
     await db.commit()
@@ -226,6 +221,10 @@ async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
         "viability_score": viability_score,
         "ai_feedback": ai_feedback,
         "roast": roast,
+        "elevator_pitch": new_analysis.elevator_pitch,
+        "target_audience": new_analysis.target_audience,
+        "monetization": new_analysis.monetization,
+        "competitors": json.loads(new_analysis.competitors) if new_analysis.competitors else [],
         "analyzed_at": new_analysis.analyzed_at.isoformat(),
     }
 
@@ -254,6 +253,10 @@ async def get_history(db: AsyncSession = Depends(get_db)):
             "viability_score": a.viability_score,
             "ai_feedback": a.ai_feedback,
             "roast": a.roast,
+            "elevator_pitch": a.elevator_pitch,
+            "target_audience": a.target_audience,
+            "monetization": a.monetization,
+            "competitors": json.loads(a.competitors) if a.competitors else [],
             "analyzed_at": a.analyzed_at.isoformat()
         })
     return {"history": out}

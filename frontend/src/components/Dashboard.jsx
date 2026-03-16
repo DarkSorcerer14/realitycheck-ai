@@ -7,9 +7,9 @@ function viabilityMeta(score) {
   return { label: "Risky Territory", color: "var(--danger)", border: "rgba(244, 63, 94, 0.3)", shadow: "rgba(244, 63, 94, 0.2)" };
 }
 
-function ScoreCard({ label, value, color, description }) {
+function ScoreCard({ label, value, color, description, delay = "0s", pulse = false }) {
   return (
-    <div className="glass-panel" style={{ padding: "24px" }}>
+    <div className={`glass-panel animate-scale-in`} style={{ padding: "24px", animationDelay: delay, ...(pulse ? { animation: `scaleIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards, pulseBorder 3s infinite` } : {}) }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
         <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600 }}>
           {label}
@@ -96,42 +96,103 @@ export default function Dashboard({ data }) {
       </div>
 
       {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px", marginBottom: "24px" }}>
-        <ScoreCard label="Organic Demand" value={data.demand_score} color="#3b82f6" description="Cumulative Reddit discussion volume & engagement." />
-        <ScoreCard label="Trend Momentum" value={data.trend_score} color="var(--primary)" description="Google Trends 12-month search interest trajectory." />
-        <ScoreCard label="Market Saturation" value={data.competition_score} color="#ec4899" description="AI-estimated competition density (lower is better)." />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
+        <div style={{ flex: "1 1 280px" }}>
+          <ScoreCard label="Organic Demand" value={data.demand_score} color="#3b82f6" description="Cumulative Reddit discussion volume & engagement." delay="0.1s" />
+        </div>
+        <div style={{ flex: "1 1 280px" }}>
+          <ScoreCard label="Trend Momentum" value={data.trend_score} color="var(--primary)" description="Google Trends 12-month search interest trajectory." delay="0.2s" pulse={true} />
+        </div>
+        <div style={{ flex: "1 1 280px" }}>
+          <ScoreCard label="Market Saturation" value={data.competition_score} color="#ec4899" description="AI-estimated competition density (lower is better)." delay="0.3s" />
+        </div>
       </div>
 
-      {/* AI Analyst */}
-      <div className="glass-panel" style={{ padding: "32px", marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-          <div style={{
-            width: "32px", height: "32px", borderRadius: "10px",
-            background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.2)",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-            </svg>
-          </div>
-          <div className="font-outfit" style={{ fontSize: "1.1rem", fontWeight: 600 }}>Actionable Insights</div>
-          <div style={{
-            marginLeft: "auto", fontSize: "0.7rem", color: "var(--primary)",
-            background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.2)",
-            padding: "4px 12px", borderRadius: "999px", letterSpacing: "0.1em", textTransform: "uppercase",
-            fontWeight: 600
-          }}>
-            Llama 3.3 70B
-          </div>
+      {/* Business Profile Features */}
+      {(data.target_audience || data.monetization) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
+          {data.target_audience && (
+            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 280px", padding: "24px", animationDelay: "0.5s" }}>
+              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--success)", fontWeight: 600, marginBottom: "12px" }}>
+                Target Audience
+              </div>
+              <div style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
+                {data.target_audience}
+              </div>
+            </div>
+          )}
+
+          {data.monetization && (
+            <div className="glass-panel animate-scale-in" style={{ flex: "1 1 280px", padding: "24px", animationDelay: "0.6s" }}>
+              <div style={{ fontSize: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--warning)", fontWeight: 600, marginBottom: "12px" }}>
+                Monetization Model
+              </div>
+              <div style={{ fontSize: "1rem", color: "var(--text-dim)", lineHeight: 1.5 }}>
+                {data.monetization}
+              </div>
+            </div>
+          )}
         </div>
-        <div style={{ 
-          fontSize: "1rem", color: "var(--text-main)", lineHeight: 1.8, 
-          whiteSpace: "pre-line", fontWeight: 300, background: "rgba(0,0,0,0.2)",
-          padding: "20px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.02)"
-        }}>
-          {data.ai_feedback}
+      )}
+
+      {/* Symmetrical Grid for Competitors and AI Analyst */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
+        {/* Competitors Section */}
+        {data.competitors && data.competitors.length > 0 ? (
+          <div className="glass-panel animate-scale-in" style={{ flex: "1 1 350px", padding: "32px", animationDelay: "0.7s" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+              <div style={{
+                width: "32px", height: "32px", borderRadius: "10px",
+                background: "rgba(236, 72, 153, 0.1)", border: "1px solid rgba(236, 72, 153, 0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <div className="font-outfit" style={{ fontSize: "1.1rem", fontWeight: 600 }}>Known Alternatives</div>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+              {data.competitors.map((comp, idx) => (
+                <span key={idx} style={{
+                  background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.05)",
+                  padding: "10px 18px", borderRadius: "10px", fontSize: "0.95rem", color: "var(--text-dim)",
+                  transition: "all 0.2s"
+                }} onMouseEnter={e => { e.currentTarget.style.color = "var(--text-main)"; e.currentTarget.style.borderColor = "var(--border-hover)"; }} onMouseLeave={e => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; }}>
+                  {comp}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* AI Analyst */}
+        <div className="glass-panel animate-scale-in" style={{ flex: "1 1 350px", padding: "32px", animationDelay: "0.8s" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+            <div style={{
+              width: "32px", height: "32px", borderRadius: "10px",
+              background: "rgba(139, 92, 246, 0.1)", border: "1px solid rgba(139, 92, 246, 0.2)",
+              display: "flex", alignItems: "center", justifyContent: "center"
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div className="font-outfit" style={{ fontSize: "1.1rem", fontWeight: 600 }}>Actionable Insights</div>
+          </div>
+          <div style={{ 
+            fontSize: "1rem", color: "var(--text-main)", lineHeight: 1.8, 
+            whiteSpace: "pre-line", fontWeight: 300, background: "rgba(0,0,0,0.2)",
+            padding: "20px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.02)"
+          }}>
+            {data.ai_feedback}
+          </div>
         </div>
       </div>
+
 
       {/* Roast */}
       {data.roast && (

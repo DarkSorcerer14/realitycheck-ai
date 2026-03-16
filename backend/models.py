@@ -30,6 +30,10 @@ class Analysis(Base):
     viability_score = Column(Float)
     ai_feedback = Column(Text)
     roast = Column(Text)
+    elevator_pitch = Column(String(500))
+    target_audience = Column(String(500))
+    monetization = Column(String(500))
+    competitors = Column(Text)
     analyzed_at = Column(DateTime, default=datetime.utcnow)
     idea = relationship("Idea", back_populates="analyses")
 

@@ -68,11 +68,19 @@ export default function HistoryList({ onSelectHistory, refreshTrigger }) {
           >
             <div style={{ flex: 1, marginRight: "24px" }}>
               <div className="font-inter" style={{ 
-                color: "var(--text-main)", fontSize: "1.05rem", fontWeight: 400, marginBottom: "12px", 
+                color: "var(--text-main)", fontSize: "1.05rem", fontWeight: 400, marginBottom: "6px", 
                 display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 
               }}>
                 "{item.idea}"
               </div>
+              {item.elevator_pitch && (
+                <div className="font-inter" style={{ 
+                  color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 300, marginBottom: "12px", 
+                  display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.4 
+                }}>
+                  {item.elevator_pitch}
+                </div>
+              )}
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{
                   fontSize: "0.65rem", padding: "4px 10px", borderRadius: "999px",
