@@ -43,7 +43,7 @@ class IdeaRequest(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def llm(system: str, user: str, json_mode: bool = False) -> str:
+async def llm(system: str, user: str, json_mode: bool = False, temperature: float = 0.0) -> str:
     kwargs = {"response_format": {"type": "json_object"}} if json_mode else {}
     resp = await client.chat.completions.create(
         model=MODEL,
@@ -52,12 +52,22 @@ async def llm(system: str, user: str, json_mode: bool = False) -> str:
             {"role": "user", "content": user}
         ],
         max_tokens=512,
+        temperature=temperature,
         **kwargs,
     )
     return resp.choices[0].message.content.strip()
 
 
 # ── Pipeline ──────────────────────────────────────────────────────────────────
+
+async def validate_idea(idea: str) -> bool:
+    raw = await llm(
+        "You are an idea validator. Determine if the user's input is a coherent startup idea or just gibberish/random words. "
+        "Return ONLY valid JSON: {\"is_valid\": true/false}",
+        idea,
+        json_mode=True,
+    )
+    return json.loads(raw).get("is_valid", True)
 
 async def extract_keywords(idea: str) -> list[str]:
     raw = await llm(
@@ -136,10 +146,44 @@ async def get_roast(idea: str, v: float) -> str:
 
 @app.post("/analyze")
 async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
-    if not req.idea.strip():
+    idea_text = req.idea.strip()
+    if not idea_text:
         raise HTTPException(400, "Idea cannot be empty")
 
-    keywords = await extract_keywords(req.idea)
+    # Check if this exact idea has been analyzed before
+    stmt = select(Idea).where(Idea.text == idea_text)
+    result = await db.execute(stmt)
+    existing_idea = result.scalars().first()
+
+    if existing_idea:
+        # Find its most recent analysis
+        analysis_stmt = select(Analysis).where(Analysis.idea_id == existing_idea.id).order_by(Analysis.analyzed_at.desc())
+        analysis_result = await db.execute(analysis_stmt)
+        existing_analysis = analysis_result.scalars().first()
+
+        if existing_analysis:
+            # If they want roast mode but it doesn't have one, we could re-run, but for simplicity we'll just check if it satisfies
+            if not req.roast_mode or (req.roast_mode and existing_analysis.roast):
+                return {
+                    "id": existing_analysis.id,
+                    "idea_id": existing_idea.id,
+                    "idea": existing_idea.text,
+                    "keywords": json.loads(existing_analysis.keywords),
+                    "demand_score": existing_analysis.demand_score,
+                    "trend_score": existing_analysis.trend_score,
+                    "competition_score": existing_analysis.competition_score,
+                    "viability_score": existing_analysis.viability_score,
+                    "ai_feedback": existing_analysis.ai_feedback,
+                    "roast": existing_analysis.roast,
+                    "analyzed_at": existing_analysis.analyzed_at.isoformat(),
+                }
+
+    # Validate gibberish
+    is_valid = await validate_idea(idea_text)
+    if not is_valid:
+        raise HTTPException(400, "This doesn't look like a coherent startup idea. Please provide a clear concept instead of gibberish.")
+
+    keywords = await extract_keywords(idea_text)
     demand_score = await get_demand_score(keywords)
     trend_score = get_trend_score(keywords)
     competition_score = await get_competition_score(keywords, req.idea)
@@ -214,6 +258,19 @@ async def get_history(db: AsyncSession = Depends(get_db)):
             "analyzed_at": a.analyzed_at.isoformat()
         })
     return {"history": out}
+
+
+@app.delete("/history/{analysis_id}")
+async def delete_history(analysis_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(Analysis).where(Analysis.id == analysis_id)
+    result = await db.execute(stmt)
+    analysis = result.scalars().first()
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    
+    await db.delete(analysis)
+    await db.commit()
+    return {"status": "deleted"}
 
 
 @app.get("/health")

@@ -20,7 +20,14 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea, roast_mode: roastMode }),
       });
-      if (!res.ok) throw new Error("Intelligence Analysis Failed. Is the backend running?");
+      if (!res.ok) {
+        let errMsg = "Intelligence Analysis Failed. Is the backend running?";
+        try {
+          const errData = await res.json();
+          if (errData.detail) errMsg = errData.detail;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await res.json();
       setResult(data);
       setRefreshHistory(prev => prev + 1);
