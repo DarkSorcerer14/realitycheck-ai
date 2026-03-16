@@ -87,13 +87,14 @@ async def get_demand_score(keywords: list[str]) -> float:
             r = await http.get(url, timeout=10)
             posts = r.json()["data"]["children"]
             if not posts:
-                return 3.0
+                return 5.5
             total_score = sum(p["data"]["score"] for p in posts)
             num_comments = sum(p["data"]["num_comments"] for p in posts)
             raw = min((total_score / 20000) + (num_comments / 2000), 10)
-            return round(max(1.0, raw), 2)
+            remapped = 5.0 + (max(raw, 0) / 2.0)
+            return round(min(remapped, 10.0), 2)
         except Exception:
-            return 4.0
+            return 6.0
 
 
 def get_trend_score(keywords: list[str]) -> float:
@@ -103,14 +104,15 @@ def get_trend_score(keywords: list[str]) -> float:
         pytrends.build_payload(kw, timeframe="today 12-m")
         df = pytrends.interest_over_time()
         if df.empty:
-            return 2.0
+            return 5.5
         avg = df[kw[0]].mean()
         recent = df[kw[0]].iloc[-4:].mean()
         momentum = (recent - avg) / max(avg, 1)
-        score = (avg / 10) + (momentum * 2)
-        return round(min(max(score, 0), 10), 2)
+        raw = (avg / 10) + (momentum * 2)
+        remapped = 5.0 + (min(max(raw, 0), 10) / 2.0)
+        return round(min(remapped, 10.0), 2)
     except Exception:
-        return 3.0
+        return 6.0
 
 
 async def get_competition_score(keywords: list[str], idea: str) -> float:
