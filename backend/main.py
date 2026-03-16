@@ -1,16 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from pydantic import BaseModel
 from groq import AsyncGroq
 import httpx, json, os
 from pytrends.request import TrendReq
 from datetime import datetime
-from models import init_db
+from models import init_db, SessionLocal, Idea, Analysis
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = FastAPI(title="RealityCheck AI")
+
+# dependency
+async def get_db():
+    async with SessionLocal() as session:
+        yield session
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,7 +80,7 @@ async def get_demand_score(keywords: list[str]) -> float:
                 return 3.0
             total_score = sum(p["data"]["score"] for p in posts)
             num_comments = sum(p["data"]["num_comments"] for p in posts)
-            raw = min((total_score / 5000) + (num_comments / 500), 10)
+            raw = min((total_score / 20000) + (num_comments / 2000), 10)
             return round(max(1.0, raw), 2)
         except Exception:
             return 4.0
@@ -86,14 +93,14 @@ def get_trend_score(keywords: list[str]) -> float:
         pytrends.build_payload(kw, timeframe="today 12-m")
         df = pytrends.interest_over_time()
         if df.empty:
-            return 4.0
+            return 2.0
         avg = df[kw[0]].mean()
         recent = df[kw[0]].iloc[-4:].mean()
         momentum = (recent - avg) / max(avg, 1)
         score = (avg / 10) + (momentum * 2)
         return round(min(max(score, 0), 10), 2)
     except Exception:
-        return 4.5
+        return 3.0
 
 
 async def get_competition_score(keywords: list[str], idea: str) -> float:
@@ -128,7 +135,7 @@ async def get_roast(idea: str, v: float) -> str:
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @app.post("/analyze")
-async def analyze(req: IdeaRequest):
+async def analyze(req: IdeaRequest, db: AsyncSession = Depends(get_db)):
     if not req.idea.strip():
         raise HTTPException(400, "Idea cannot be empty")
 
@@ -137,15 +144,37 @@ async def analyze(req: IdeaRequest):
     trend_score = get_trend_score(keywords)
     competition_score = await get_competition_score(keywords, req.idea)
 
-    raw_v = (0.4 * demand_score) + (0.3 * trend_score) - (0.3 * competition_score)
-    viability_score = round(min(max(raw_v, 0), 10), 2)
+    raw_v = (demand_score * 0.4) + (trend_score * 0.4) + ((10 - competition_score) * 0.2)
+    viability_score = round(min(max(raw_v, 1.0), 10.0), 2)
 
     ai_feedback = await get_ai_feedback(
         req.idea, demand_score, trend_score, competition_score, viability_score
     )
     roast = await get_roast(req.idea, viability_score) if req.roast_mode else None
 
+    # Save to DB
+    new_idea = Idea(text=req.idea)
+    db.add(new_idea)
+    await db.commit()
+    await db.refresh(new_idea)
+
+    new_analysis = Analysis(
+        idea_id=new_idea.id,
+        keywords=json.dumps(keywords),
+        demand_score=demand_score,
+        trend_score=trend_score,
+        competition_score=competition_score,
+        viability_score=viability_score,
+        ai_feedback=ai_feedback,
+        roast=roast
+    )
+    db.add(new_analysis)
+    await db.commit()
+    await db.refresh(new_analysis)
+
     return {
+        "id": new_analysis.id,
+        "idea_id": new_idea.id,
         "idea": req.idea,
         "keywords": keywords,
         "demand_score": demand_score,
@@ -154,8 +183,37 @@ async def analyze(req: IdeaRequest):
         "viability_score": viability_score,
         "ai_feedback": ai_feedback,
         "roast": roast,
-        "analyzed_at": datetime.utcnow().isoformat(),
+        "analyzed_at": new_analysis.analyzed_at.isoformat(),
     }
+
+
+@app.get("/history")
+async def get_history(db: AsyncSession = Depends(get_db)):
+    stmt = select(Analysis).order_by(Analysis.analyzed_at.desc()).limit(10)
+    result = await db.execute(stmt)
+    analyses = result.scalars().all()
+    
+    out = []
+    for a in analyses:
+        # Fetch the related idea query text
+        idea_stmt = select(Idea).where(Idea.id == a.idea_id)
+        idea_result = await db.execute(idea_stmt)
+        idea_obj = idea_result.scalars().first()
+        
+        out.append({
+            "id": a.id,
+            "idea_id": a.idea_id,
+            "idea": idea_obj.text if idea_obj else "",
+            "keywords": json.loads(a.keywords) if a.keywords else [],
+            "demand_score": a.demand_score,
+            "trend_score": a.trend_score,
+            "competition_score": a.competition_score,
+            "viability_score": a.viability_score,
+            "ai_feedback": a.ai_feedback,
+            "roast": a.roast,
+            "analyzed_at": a.analyzed_at.isoformat()
+        })
+    return {"history": out}
 
 
 @app.get("/health")

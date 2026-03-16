@@ -2,11 +2,13 @@
 import { useState } from "react";
 import IdeaInput from "@/components/IdeaInput";
 import Dashboard from "@/components/Dashboard";
+import HistoryList from "@/components/HistoryList";
 
 export default function Home() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [refreshHistory, setRefreshHistory] = useState(0);
 
   async function analyze(idea, roastMode) {
     setLoading(true);
@@ -18,8 +20,10 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea, roast_mode: roastMode }),
       });
-      if (!res.ok) throw new Error("Analysis failed");
-      setResult(await res.json());
+      if (!res.ok) throw new Error("Intelligence Analysis Failed. Is the backend running?");
+      const data = await res.json();
+      setResult(data);
+      setRefreshHistory(prev => prev + 1);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -27,84 +31,64 @@ export default function Home() {
     }
   }
 
-  return (
-    <main style={{
-      background: "#07070A",
-      minHeight: "100vh",
-      color: "#F0EEE8",
-      fontFamily: "'DM Sans', sans-serif",
-      position: "relative",
-      overflowX: "hidden"
-    }}>
-      {/* Grid background */}
-      <div style={{
-        position: "fixed", inset: 0,
-        backgroundImage: "linear-gradient(#1E1E2E 1px,transparent 1px),linear-gradient(90deg,#1E1E2E 1px,transparent 1px)",
-        backgroundSize: "60px 60px", opacity: 0.3, pointerEvents: "none"
-      }}/>
-      {/* Gold glow */}
-      <div style={{
-        position: "fixed", top: "-200px", left: "50%", transform: "translateX(-50%)",
-        width: "600px", height: "400px",
-        background: "radial-gradient(ellipse,rgba(201,168,76,0.08) 0%,transparent 70%)",
-        pointerEvents: "none"
-      }}/>
+  function handleSelectHistory(item) {
+    setResult(item);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-      <div style={{ maxWidth: "780px", margin: "0 auto", padding: "60px 24px 80px", position: "relative" }}>
-        <header style={{ textAlign: "center", marginBottom: "52px" }}>
-          <div style={{
+  return (
+    <>
+      <div className="bg-grid" />
+      <div className="ambient-glow" />
+      
+      <main style={{ maxWidth: "840px", margin: "0 auto", padding: "80px 24px 120px", position: "relative", zIndex: 10 }}>
+        <header className="animate-slide-up" style={{ textAlign: "center", marginBottom: "64px" }}>
+          
+          <div className="glass-pill" style={{
             display: "inline-flex", alignItems: "center", gap: "8px",
-            border: "1px solid rgba(201,168,76,0.3)", borderRadius: "100px",
-            padding: "6px 16px", fontSize: "11px", letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "#C9A84C", marginBottom: "28px",
-            background: "rgba(201,168,76,0.05)"
+            padding: "8px 20px", fontSize: "0.75rem", letterSpacing: "0.15em",
+            textTransform: "uppercase", color: "var(--primary)", marginBottom: "32px",
+            fontWeight: 600
           }}>
             <span style={{
-              width: "6px", height: "6px", borderRadius: "50%", background: "#C9A84C",
-              animation: "pulse 2s ease-in-out infinite"
+              width: "6px", height: "6px", borderRadius: "50%", background: "var(--primary)",
+              boxShadow: "0 0 10px var(--primary)",
+              animation: "pulseGlow 2s ease-in-out infinite"
             }}/>
-            Startup Intelligence
+            Advanced Market Intelligence
           </div>
-          <h1 style={{
-            fontFamily: "'Instrument Serif', serif",
-            fontSize: "clamp(42px,7vw,68px)", fontWeight: 400,
-            lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: "16px"
-          }}>
-            Validate before<br/>you <em style={{ fontStyle: "italic", color: "#C9A84C" }}>build</em>
+          
+          <h1 className="heading-xl font-outfit" style={{ marginBottom: "20px" }}>
+            Validate your ideas <br/>
+            <span className="text-gradient">before you build.</span>
           </h1>
-          <p style={{ color: "#6B6880", fontSize: "16px", fontWeight: 300, maxWidth: "440px", margin: "0 auto", lineHeight: 1.7 }}>
-            Real internet signals. Honest scores. No fluff — just data on whether your idea has legs.
+          
+          <p className="font-inter" style={{ 
+            color: "var(--text-muted)", fontSize: "1.1rem", fontWeight: 300, 
+            maxWidth: "500px", margin: "0 auto", lineHeight: 1.6 
+          }}>
+            Real internet signals. Honest scoring. Zero fluff.
+            Stress-test your startup concept against pure data.
           </p>
         </header>
 
         <IdeaInput onAnalyze={analyze} loading={loading} />
 
         {error && (
-          <div style={{
-            background: "#0F0808", border: "1px solid rgba(245,101,101,0.3)",
-            borderRadius: "12px", padding: "16px 20px", color: "#F56565",
-            fontSize: "13px", marginBottom: "20px"
+          <div className="glass-panel" style={{
+             borderColor: "rgba(244, 63, 94, 0.3)",
+             background: "rgba(244, 63, 94, 0.05)",
+             color: "var(--danger)", padding: "20px",
+             marginBottom: "32px", fontSize: "0.95rem"
           }}>
             {error}
           </div>
         )}
 
         {result && <Dashboard data={result} />}
-      </div>
 
-      <style>{`
-        @keyframes pulse {
-          0%,100%{opacity:1;transform:scale(1)}
-          50%{opacity:0.5;transform:scale(0.8)}
-        }
-        @keyframes spin {
-          to{transform:rotate(360deg)}
-        }
-        @keyframes fadeUp {
-          from{opacity:0;transform:translateY(16px)}
-          to{opacity:1;transform:translateY(0)}
-        }
-      `}</style>
-    </main>
+        <HistoryList refreshTrigger={refreshHistory} onSelectHistory={handleSelectHistory} />
+      </main>
+    </>
   );
 }
